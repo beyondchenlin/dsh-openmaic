@@ -1,0 +1,23 @@
+{
+  "id": "@openmaic/dsh-openmaic",
+  "version": "0.4.0",
+  "main": "./lib/index.js",
+  "description": "OpenMAIC for DeepSeek Harness: classrooms, slides, interactive widgets, and Socratic teaching",
+  "engines": {
+    "dsh": ">=0.0.1"
+  },
+  "contributes": {
+    "tools": [
+      "openmaic_generate",
+      "openmaic_render",
+      "openmaic_widget",
+      "openmaic_slide"
+    ],
+    "skills": [
+      "openmaic-render",
+      "openmaic-widget",
+      "openmaic-slide",
+      "openmaic-teach"
+    ]
+  }
+}
