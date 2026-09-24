@@ -16,7 +16,9 @@ Socratic teaching skill:
 ```
 用户: 帮我做一节量子物理入门课
 模型 → openmaic_generate(requirement="量子物理入门课", language="zh-CN")
-     ← "Classroom ID: class-abc123
+     → 插件自动把本次 Harness callId 绑定成稳定 taskId
+     ← "Course ID: course-abc123
+        Classroom ID: class-abc123
         Classroom URL:
         https://open.maic.chat/classroom/class-abc123"
 模型: 课堂已经生成好了，点开就能上课：
@@ -49,7 +51,7 @@ dsh-openmaic:
   baseUrl: https://open.maic.chat
   accessCode: ""     # invite code; not enforced online yet, leave empty
   pollIntervalMs: 5000
-  maxWaitMs: 600000
+  maxWaitMs: 1800000
 ```
 
 | Key | Default | Notes |
@@ -57,14 +59,14 @@ dsh-openmaic:
 | `baseUrl` | `https://open.maic.chat` | API base. Point at `http://localhost:3000` to develop against a local OpenMAIC. |
 | `accessCode` | `""` | Invite code for open.maic.chat. Not enforced online yet, leave empty; fill it in once enabled. |
 | `pollIntervalMs` | `5000` | Poll interval in ms. Generation is slow, so 60000 is friendlier than the default. |
-| `maxWaitMs` | `600000` | Cap for one job, 10 minutes. |
+| `maxWaitMs` | `1800000` | Cap for one job, 30 minutes. |
 
 ## API flow
 
 1. If `accessCode` is set, `POST /api/access-code/verify` and replay the `openmaic_access` cookie on later requests.
-2. `POST /api/generate-classroom` with the requirement, plus only the optional flags you passed. Returns a `jobId` and `pollUrl`.
+2. Derive a stable `taskId` from the immutable DeepSeek Harness tool `callId`, then `POST /api/generate-classroom` with the requirement, language/voice bindings and other optional flags actually supplied by the caller. Retries of the same Harness tool call reuse the same OpenMAIC task.
 3. Poll `GET {pollUrl}` until the job is `succeeded` or `failed`, or `maxWaitMs` runs out.
-4. On success, return `{baseUrl}/classroom/{classroomId}` (or the server-provided `result.url`).
+4. On success, return both the stable `courseId` and backward-compatible `classroomId`, plus `{baseUrl}/classroom/{classroomId}` (or the server-provided `result.url`).
 
 ## Scope
 

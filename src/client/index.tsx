@@ -7,10 +7,11 @@
  * @module @openmaic/dsh-openmaic/client
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // Type-only: pulls the `tool.call.toolview` and `conversation.input.dock` SlotMap declarations.
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { OpenmaicCard } from './OpenmaicCard.tsx'
 import { WidgetCard } from './WidgetCard.tsx'
 import { SlideCard } from './SlideCard.tsx'

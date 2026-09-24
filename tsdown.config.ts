@@ -15,15 +15,14 @@ const PLUGIN_ID = '@openmaic/dsh-openmaic'
 /** Module specifiers the dsh web shell shares into its frozen module table. */
 const PLATFORM_MODULES = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-web-react',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-attachment',
-  '@deepseek-ai/dsh-client-schema-form',
+  '@deepseek-ai/dsh-client-ui-dockkit',
 ] as const
 
 /** Externals resolved from the loader module table. */
-const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES, '@deepseek-ai/dsh-client-runtime/client']
+const CLIENT_EXTERNALS: readonly string[] = PLATFORM_MODULES
 
 // shiki is a lazy optional peer of the renderer (code highlighting). It cannot
 // ship either way — external leaves a bare `import("shiki")` the browser cannot
@@ -63,7 +62,7 @@ export default [
       // client: the web shell's frozen module table cannot answer them.
       // shiki is listed too: a dependency is externalized by default, and that
       // check runs on the raw specifier before the alias below can redirect it.
-      alwaysBundle: [/@openmaic\/(renderer|dsl)/, /^echarts($|\/)/, /^shiki($|\/)/],
+      alwaysBundle: [/@openmaic\/(renderer|dsl)/, /^echarts($|\/)/, /^motion($|\/)/, /^@emotion\/is-prop-valid$/, /^shiki($|\/)/],
     },
     alias: { shiki: SHIKI_STUB },
     define: {

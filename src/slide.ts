@@ -10,8 +10,10 @@
  * @module @openmaic/dsh-openmaic/slide
  */
 
-import { defineTool, type JsonValue, type ToolDefinition } from '@deepseek-ai/dsh-tools'
+import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import { OPENMAIC_SLIDE_TOOL_NAME, slideMetaFrom } from './slide-meta.js'
+
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 
 export { OPENMAIC_SLIDE_TOOL_NAME, slideMetaFrom } from './slide-meta.js'
 export type { SlideMeta } from './slide-meta.js'
