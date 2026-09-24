@@ -58,7 +58,7 @@ function voiceBindingParameter(description: string) {
       voiceId: { type: 'string' as const, required: true, description: 'Saved OpenMAIC voice/profile id.' },
       modelId: { type: 'string' as const, description: 'Optional model id when the saved voice is model-bound.' },
     },
-  }
+  } as const
 }
 
 export const Config: z<Config> = z.object({

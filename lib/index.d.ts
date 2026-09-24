@@ -18,7 +18,8 @@ interface Config {
   pollIntervalMs?: number;
   maxWaitMs?: number;
 }
+declare function taskIdForHarnessCall(callId: unknown): string;
 declare const Config: z<Config>;
 declare function apply(ctx: Context$1, config: Config): void;
 //#endregion
-export { Config, apply, inject, name };
+export { Config, apply, inject, name, taskIdForHarnessCall };

@@ -10,7 +10,7 @@ import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import SkillService from '@deepseek-ai/dsh-skill'
 import ToolRegistry, { type ToolExecutionResult } from '@deepseek-ai/dsh-tools'
-import { CallId, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { ToolCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import * as DshOpenmaic from '../src/index.ts'
 
 const activeContexts: Context[] = []
@@ -36,7 +36,7 @@ async function setup(config: DshOpenmaic.Config = {}): Promise<Context> {
 async function callTool(
   ctx: Context,
   args: unknown,
-  callId = CallId(`call-${++calls}`),
+  callId = ToolCallId(`call-${++calls}`),
 ): Promise<ToolExecutionResult> {
   const caller = ctx.sessions.create(SessionId(`caller-${++calls}`), { meta: { createdAt: 1, cwd: '/work' } })
   caller.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
@@ -63,7 +63,7 @@ async function callRender(ctx: Context, args: unknown): Promise<ToolExecutionRes
   return ctx.tools.execute({
     name: 'openmaic_render',
     arguments: args,
-    callId: CallId(`call-${++calls}`),
+    callId: ToolCallId(`call-${++calls}`),
     signal: new AbortController().signal,
     agent,
   })
@@ -91,7 +91,7 @@ describe('openmaic_generate', () => {
     const result = await callTool(
       ctx,
       { requirement: 'quantum physics for beginners' },
-      CallId('call-stable-lesson'),
+      ToolCallId('call-stable-lesson'),
     )
     expect(result.isError).toBeFalsy()
     expect(text(result)).toBe(
@@ -116,7 +116,7 @@ describe('openmaic_generate', () => {
         assistant: { providerId: 'qwen-vc', voiceId: 'assistant-voice' },
       },
       enableWebSearch: true,
-    }, CallId('call-voice-contract'))
+    }, ToolCallId('call-voice-contract'))
     const body = captured.bodies[0] as Record<string, unknown>
     expect(body).toEqual({
       requirement: 'r',
@@ -133,7 +133,7 @@ describe('openmaic_generate', () => {
   it('derives the same server taskId when the same Harness call is retried', async () => {
     const captured = stubGenerate()
     const ctx = await setup()
-    const stableCallId = CallId('call-retry-stable')
+    const stableCallId = ToolCallId('call-retry-stable')
 
     await callTool(ctx, { requirement: 'r' }, stableCallId)
     await callTool(ctx, { requirement: 'r' }, stableCallId)

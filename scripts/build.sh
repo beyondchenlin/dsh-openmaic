@@ -30,49 +30,8 @@ if [ ! -x "$TSDOWN" ]; then
   exit 1
 fi
 
-link_pkg() {
-  local target="$CHECKOUT/$2"
-  if [ ! -e "$target" ]; then
-    echo "build: skip missing dependency target: $2" >&2
-    return 0
-  fi
-  mkdir -p "$(dirname "node_modules/$1")"
-  ln -sfn "$target" "node_modules/$1"
-}
-
 echo "=== Linking build dependencies (checkout: $CHECKOUT) ==="
-mkdir -p node_modules/@deepseek-ai node_modules/@standard-schema node_modules/@types
-ln -sfn "$CHECKOUT/node_modules/@types" node_modules/@types
-# Node half.
-link_pkg @deepseek-ai/cordis vendor/cordis
-link_pkg @deepseek-ai/cosmokit vendor/cosmokit
-link_pkg @deepseek-ai/schemastery vendor/schemastery
-link_pkg @deepseek-ai/dsh-brand packages/util/brand
-link_pkg @deepseek-ai/dsh-llm packages/llm/llm
-link_pkg @deepseek-ai/dsh-scope packages/core/scope
-link_pkg @deepseek-ai/dsh-session packages/core/session
-link_pkg @deepseek-ai/dsh-skill packages/skill/skill
-link_pkg @deepseek-ai/dsh-system-prompt packages/core/system-prompt
-link_pkg @deepseek-ai/dsh-tools packages/core/tools
-# Browser half (external at build time, resolved by the loader module table;
-# symlinked so `tsc -p tsconfig.client.json` type-checks against them).
-link_pkg @deepseek-ai/dsh-client-runtime packages/client/runtime
-link_pkg @deepseek-ai/dsh-client-ui-tool packages/client/ui-tool
-link_pkg @deepseek-ai/dsh-client-ui-slots packages/client/ui-slots
-link_pkg @deepseek-ai/dsh-client-ui-conversation packages/client/ui-conversation
-link_pkg @deepseek-ai/dsh-client-ui-primitives packages/client/ui-primitives
-link_pkg @deepseek-ai/dsh-client-web-react packages/client/web-react
-link_pkg @deepseek-ai/dsh-client-ui-attachment packages/client/ui-attachment
-link_pkg @deepseek-ai/dsh-client-schema-form packages/client/schema-form
-# react and its types, hoisted only inside the pnpm store.
-REACT=$(find "$CHECKOUT/node_modules/.pnpm" -maxdepth 1 -type d -iname 'react@*' 2>/dev/null | head -1)
-if [ -n "$REACT" ]; then ln -sfn "$REACT/node_modules/react" node_modules/react; fi
-TYPES_REACT=$(find "$CHECKOUT/node_modules/.pnpm" -maxdepth 1 -type d -iname '@types+react@*' 2>/dev/null | head -1)
-if [ -n "$TYPES_REACT" ]; then ln -sfn "$TYPES_REACT/node_modules/@types/react" node_modules/@types/react; fi
-STD_SCHEMA=$(find "$CHECKOUT/node_modules/.pnpm" -maxdepth 1 -type d -iname '@standard-schema+spec@*' 2>/dev/null | head -1)
-if [ -n "$STD_SCHEMA" ]; then
-  ln -sfn "$STD_SCHEMA/node_modules/@standard-schema/spec" node_modules/@standard-schema/spec
-fi
+node scripts/link-harness-deps.mjs "$CHECKOUT"
 
 echo "=== Bundling src -> lib (tsdown) ==="
 "$TSDOWN"
@@ -92,12 +51,10 @@ react/jsx-runtime
 react-dom
 react-dom/client
 @deepseek-ai/cordis
-@deepseek-ai/dsh-client-runtime/client
+@deepseek-ai/dsh-client-store
 @deepseek-ai/dsh-client-ui-slots
-@deepseek-ai/dsh-client-web-react
 @deepseek-ai/dsh-client-ui-primitives
-@deepseek-ai/dsh-client-ui-attachment
-@deepseek-ai/dsh-client-schema-form
+@deepseek-ai/dsh-client-ui-dockkit
 "
 UNEXPECTED=""
 while read -r spec; do
@@ -115,7 +72,7 @@ fi
 # The bundle is fetched as one classic script, so it must stay one file: the
 # loader has no way to fetch an emitted chunk, and a leftover dynamic import
 # (bare specifier or relative chunk) rejects at call time in the browser.
-DYNAMIC=$(grep -o 'import("[^"]*")' lib/client.js | sort -u | tr '\n' ' ')
+DYNAMIC=$( { grep -o 'import("[^"]*")' lib/client.js || true; } | sort -u | tr '\n' ' ')
 if [ -n "$DYNAMIC" ]; then
   echo "build: lib/client.js kept dynamic imports the browser cannot resolve: $DYNAMIC" >&2
   echo "build: bundle the dependency inline, or alias it to a local stub" >&2

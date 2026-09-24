@@ -8,12 +8,11 @@
  */
 
 import { useEffect, useRef, type CSSProperties } from 'react'
-import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls the `conversation.input.dock` SlotMap declaration.
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { UseConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import { extractStreamingWidget, OPENMAIC_WIDGET_TOOL_NAME } from '../widget-meta.ts'
 
-type StreamingWidgetPreviewProps = PropsRuntime<'conversation.input.dock'>
+type StreamingWidgetPreviewProps = { useConversation: UseConversation }
 
 const wrapStyle: CSSProperties = { margin: '6px auto 2px', maxWidth: 760, width: '100%' }
 
@@ -41,8 +40,11 @@ const codeStyle: CSSProperties = {
  * Dock entry: mounts exactly while the streaming partial carries an
  * `openmaic_widget` tool-call block, and shows the widget HTML as it streams.
  */
-export function StreamingWidgetPreview({ session }: StreamingWidgetPreviewProps) {
-  const blocks = session?.partial?.blocks
+export function StreamingWidgetPreview({ useConversation }: StreamingWidgetPreviewProps) {
+  const blocks = useConversation(snapshot => {
+    const views = snapshot.views as { get(target: string): ChatSnapshot | undefined }
+    return views.get('chat')?.legacy.partial?.blocks
+  })
   if (blocks === undefined) return null
   let argsRaw: string | undefined
   for (const block of blocks) {

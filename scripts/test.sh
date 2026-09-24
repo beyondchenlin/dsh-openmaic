@@ -26,34 +26,8 @@ if [ ! -x "$VITEST" ]; then
   exit 1
 fi
 
-link_pkg() {
-  local target="$CHECKOUT/$2"
-  if [ ! -e "$target" ]; then
-    echo "test: skip missing dependency target: $2" >&2
-    return 0
-  fi
-  mkdir -p "$(dirname "node_modules/$1")"
-  ln -sfn "$target" "node_modules/$1"
-}
-
 echo "=== Linking test dependencies (checkout: $CHECKOUT) ==="
-mkdir -p node_modules/@deepseek-ai node_modules/@standard-schema node_modules/@types
-ln -sfn "$CHECKOUT/node_modules/@types" node_modules/@types
-link_pkg @deepseek-ai/cordis vendor/cordis
-link_pkg @deepseek-ai/cosmokit vendor/cosmokit
-link_pkg @deepseek-ai/schemastery vendor/schemastery
-link_pkg @deepseek-ai/dsh-brand packages/util/brand
-link_pkg @deepseek-ai/dsh-llm packages/llm/llm
-link_pkg @deepseek-ai/dsh-scope packages/core/scope
-link_pkg @deepseek-ai/dsh-session packages/core/session
-link_pkg @deepseek-ai/dsh-skill packages/skill/skill
-link_pkg @deepseek-ai/dsh-system-prompt packages/core/system-prompt
-link_pkg @deepseek-ai/dsh-tools packages/core/tools
-
-STD_SCHEMA=$(find "$CHECKOUT/node_modules/.pnpm" -maxdepth 1 -type d -iname '@standard-schema+spec@*' 2>/dev/null | head -1)
-if [ -n "$STD_SCHEMA" ]; then
-  ln -sfn "$STD_SCHEMA/node_modules/@standard-schema/spec" node_modules/@standard-schema/spec
-fi
+node scripts/link-harness-deps.mjs "$CHECKOUT"
 
 echo "=== Running tests (vitest) ==="
-VITEST_MAX_WORKERS=4 "$VITEST" run
+VITEST_MAX_WORKERS=4 "$VITEST" run --exclude '.tools/**'
