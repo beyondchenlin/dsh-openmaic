@@ -17,7 +17,8 @@ Socratic teaching skill:
 用户: 帮我做一节量子物理入门课
 模型 → openmaic_generate(requirement="量子物理入门课", language="zh-CN")
      → 插件自动把本次 Harness callId 绑定成稳定 taskId
-     ← "Course ID: course-abc123
+     ← "Task ID: dsh-call-abc123
+        Course ID: course-abc123
         Classroom ID: class-abc123
         Classroom URL:
         https://open.maic.chat/classroom/class-abc123"
@@ -37,29 +38,50 @@ Interactive widget:
 
 ## Install
 
+The plugin is currently distributed from its public GitHub repository (it is
+not published to npm yet):
+
 ```sh
-dsh plugin --profile web add git+https://github.com/THU-MAIC/dsh-openmaic.git
+dsh plugin --profile web add git+https://github.com/beyondchenlin/dsh-openmaic.git
 ```
 
-Then restart `dsh web` and refresh. The plugin ships its compiled `lib/`, so a
-git install needs no build step.
+When running DeepSeek Harness from a source checkout, use its package script:
+
+```sh
+pnpm dsh plugin --profile web add git+https://github.com/beyondchenlin/dsh-openmaic.git
+pnpm dsh web
+```
+
+Then restart `dsh web` and refresh the browser. Open **Plugins → Installed**
+and verify that `@openmaic/dsh-openmaic` is enabled. The plugin ships its
+compiled `lib/`, so a git install needs no build step.
 
 ## Config
 
 ```yaml
-dsh-openmaic:
-  baseUrl: https://open.maic.chat
-  accessCode: ""     # invite code; not enforced online yet, leave empty
-  pollIntervalMs: 5000
-  maxWaitMs: 1800000
+- id: dsh-openmaic
+  config:
+    baseUrl: https://open.maic.chat
+    accessCode: "" # invite code; not enforced online yet, leave empty
+    pollIntervalMs: 5000
+    maxWaitMs: 1800000
 ```
 
-| Key | Default | Notes |
-| --- | --- | --- |
-| `baseUrl` | `https://open.maic.chat` | API base. Point at `http://localhost:3000` to develop against a local OpenMAIC. |
-| `accessCode` | `""` | Invite code for open.maic.chat. Not enforced online yet, leave empty; fill it in once enabled. |
-| `pollIntervalMs` | `5000` | Poll interval in ms. Generation is slow, so 60000 is friendlier than the default. |
-| `maxWaitMs` | `1800000` | Cap for one job, 30 minutes. |
+Put this override in the web profile's `cordis.patch.yml` (on Windows, usually
+`C:\Users\<you>\.dsh\profiles\web\cordis.patch.yml`). For a self-hosted
+OpenMAIC server, replace `baseUrl` with its reachable URL, for example
+`http://127.0.0.1:3001` when both applications run on the same computer.
+
+`openmaic_slide`, `openmaic_widget`, and `openmaic_render` work inside Harness
+without a course-generation server. `openmaic_generate` requires the configured
+OpenMAIC server to be running and reachable from the Harness machine.
+
+| Key              | Default                  | Notes                                                                                          |
+| ---------------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| `baseUrl`        | `https://open.maic.chat` | API base. Point at `http://127.0.0.1:3001` to use OpenMAIC's default local server.             |
+| `accessCode`     | `""`                     | Invite code for open.maic.chat. Not enforced online yet, leave empty; fill it in once enabled. |
+| `pollIntervalMs` | `5000`                   | Poll interval in ms. Generation is slow, so 60000 is friendlier than the default.              |
+| `maxWaitMs`      | `1800000`                | Cap for one job, 30 minutes.                                                                   |
 
 ## API flow
 
