@@ -68,8 +68,8 @@ export const Config: z<Config> = z.object({
     .description('Invite code for open.maic.chat. Access codes are not enforced online yet, so leave it empty; fill it in once they are enabled.'),
   pollIntervalMs: z.number().step(1).min(1_000).default(5_000)
     .description('Polling interval in milliseconds. Classroom generation is slow, so 60000 is friendlier than the default.'),
-  maxWaitMs: z.number().step(1).min(1_000).default(600_000)
-    .description('How long to poll one job before giving up, in milliseconds (default 10 minutes).'),
+  maxWaitMs: z.number().step(1).min(1_000).default(1_800_000)
+    .description('How long to poll one job before giving up, in milliseconds (default 30 minutes).'),
 })
 
 const GENERATE_PROMPT_TEXT = `## Generate OpenMAIC classroom (openmaic_generate)
@@ -94,7 +94,7 @@ export function apply(ctx: Context, config: Config): void {
     baseUrl: config.baseUrl ?? DEFAULT_BASE_URL,
     accessCode: config.accessCode ?? '',
     pollIntervalMs: config.pollIntervalMs ?? 5_000,
-    maxWaitMs: config.maxWaitMs ?? 600_000,
+    maxWaitMs: config.maxWaitMs ?? 1_800_000,
   }
 
   ctx.effect(() => ctx.tools.register(defineTool({
