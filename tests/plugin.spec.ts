@@ -95,7 +95,7 @@ describe('openmaic_generate', () => {
     )
     expect(result.isError).toBeFalsy()
     expect(text(result)).toBe(
-      'Course ID: course-1\nClassroom ID: class-1\nClassroom URL:\nhttps://open.maic.chat/classroom/class-1',
+      'Task ID: dsh-call-stable-lesson\nCourse ID: course-1\nClassroom ID: class-1\nClassroom URL:\nhttps://open.maic.chat/classroom/class-1',
     )
     const body = captured.bodies[0] as Record<string, unknown>
     expect(body).toEqual({

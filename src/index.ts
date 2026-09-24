@@ -161,13 +161,14 @@ export function apply(ctx: Context, config: Config): void {
       }
       const requirement = typeof input.requirement === 'string' ? input.requirement : ''
       if (requirement === '') throw new Error('openmaic_generate: requirement is required')
+      const taskId = taskIdForHarnessCall(execution.callId)
       const outcome = await generateClassroom({
         baseUrl: resolved.baseUrl,
         accessCode: resolved.accessCode,
         pollIntervalMs: resolved.pollIntervalMs,
         maxWaitMs: resolved.maxWaitMs,
         requirement,
-        taskId: taskIdForHarnessCall(execution.callId),
+        taskId,
         language: typeof input.language === 'string' ? input.language : undefined,
         teacherVoice: input.teacherVoice as VoiceBinding | undefined,
         roleVoiceOverrides: input.roleVoiceOverrides as Partial<Record<ClassroomRole, VoiceBinding>> | undefined,
@@ -178,7 +179,7 @@ export function apply(ctx: Context, config: Config): void {
         agentMode: typeof input.agentMode === 'string' ? input.agentMode : undefined,
       })
       if (outcome.status === 'succeeded') {
-        return `Course ID: ${outcome.courseId}\nClassroom ID: ${outcome.classroomId}\nClassroom URL:\n${outcome.url}`
+        return `Task ID: ${taskId}\nCourse ID: ${outcome.courseId}\nClassroom ID: ${outcome.classroomId}\nClassroom URL:\n${outcome.url}`
       }
       throw new Error(outcome.error)
     },
