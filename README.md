@@ -16,7 +16,9 @@ Socratic teaching skill:
 ```
 用户: 帮我做一节量子物理入门课
 模型 → openmaic_generate(requirement="量子物理入门课", language="zh-CN")
-     ← "Classroom ID: class-abc123
+     → 插件自动把本次 Harness callId 绑定成稳定 taskId
+     ← "Course ID: course-abc123
+        Classroom ID: class-abc123
         Classroom URL:
         https://open.maic.chat/classroom/class-abc123"
 模型: 课堂已经生成好了，点开就能上课：
@@ -62,9 +64,9 @@ dsh-openmaic:
 ## API flow
 
 1. If `accessCode` is set, `POST /api/access-code/verify` and replay the `openmaic_access` cookie on later requests.
-2. `POST /api/generate-classroom` with the requirement, plus only the optional flags you passed. Returns a `jobId` and `pollUrl`.
+2. Derive a stable `taskId` from the immutable DeepSeek Harness tool `callId`, then `POST /api/generate-classroom` with the requirement, language/voice bindings and other optional flags actually supplied by the caller. Retries of the same Harness tool call reuse the same OpenMAIC task.
 3. Poll `GET {pollUrl}` until the job is `succeeded` or `failed`, or `maxWaitMs` runs out.
-4. On success, return `{baseUrl}/classroom/{classroomId}` (or the server-provided `result.url`).
+4. On success, return both the stable `courseId` and backward-compatible `classroomId`, plus `{baseUrl}/classroom/{classroomId}` (or the server-provided `result.url`).
 
 ## Scope
 

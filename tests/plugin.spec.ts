@@ -33,7 +33,11 @@ async function setup(config: DshOpenmaic.Config = {}): Promise<Context> {
   return ctx
 }
 
-async function callTool(ctx: Context, args: unknown): Promise<ToolExecutionResult> {
+async function callTool(
+  ctx: Context,
+  args: unknown,
+  callId = CallId(`call-${++calls}`),
+): Promise<ToolExecutionResult> {
   const caller = ctx.sessions.create(SessionId(`caller-${++calls}`), { meta: { createdAt: 1, cwd: '/work' } })
   caller.append('turn/start', { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } })
   caller.append('user/message', createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
@@ -41,7 +45,7 @@ async function callTool(ctx: Context, args: unknown): Promise<ToolExecutionResul
   return ctx.tools.execute({
     name: 'openmaic_generate',
     arguments: args,
-    callId: CallId(`call-${++calls}`),
+    callId,
     signal: new AbortController().signal,
     agent,
   })
@@ -74,7 +78,7 @@ function stubGenerate(): { bodies: unknown[]; urls: string[] } {
     if (u.endsWith('/api/generate-classroom')) {
       return new Response(JSON.stringify({ jobId: 'job-1', pollUrl: 'https://open.maic.chat/api/jobs/job-1' }), { status: 202 })
     }
-    return new Response(JSON.stringify({ status: 'succeeded', result: { classroomId: 'class-1', url: 'https://open.maic.chat/classroom/class-1' } }), { status: 200 })
+    return new Response(JSON.stringify({ status: 'succeeded', result: { courseId: 'course-1', classroomId: 'class-1', url: 'https://open.maic.chat/classroom/class-1' } }), { status: 200 })
   })
   return captured
 }
@@ -84,22 +88,61 @@ describe('openmaic_generate', () => {
     const captured = stubGenerate()
     const ctx = await setup()
 
-    const result = await callTool(ctx, { requirement: 'quantum physics for beginners' })
+    const result = await callTool(
+      ctx,
+      { requirement: 'quantum physics for beginners' },
+      CallId('call-stable-lesson'),
+    )
     expect(result.isError).toBeFalsy()
     expect(text(result)).toBe(
-      'Classroom ID: class-1\nClassroom URL:\nhttps://open.maic.chat/classroom/class-1',
+      'Course ID: course-1\nClassroom ID: class-1\nClassroom URL:\nhttps://open.maic.chat/classroom/class-1',
     )
     const body = captured.bodies[0] as Record<string, unknown>
-    expect(body).toEqual({ requirement: 'quantum physics for beginners' })
+    expect(body).toEqual({
+      requirement: 'quantum physics for beginners',
+      taskId: 'dsh-call-stable-lesson',
+    })
   })
 
   it('passes optional flags through to the submit body when given', async () => {
     const captured = stubGenerate()
     const ctx = await setup()
 
-    await callTool(ctx, { requirement: 'r', language: 'zh-CN', enableWebSearch: true })
+    await callTool(ctx, {
+      requirement: 'r',
+      language: 'zh-CN',
+      teacherVoice: { providerId: 'qwen-vc', voiceId: 'teacher-voice', modelId: 'voice-model' },
+      roleVoiceOverrides: {
+        assistant: { providerId: 'qwen-vc', voiceId: 'assistant-voice' },
+      },
+      enableWebSearch: true,
+    }, CallId('call-voice-contract'))
     const body = captured.bodies[0] as Record<string, unknown>
-    expect(body).toEqual({ requirement: 'r', language: 'zh-CN', enableWebSearch: true })
+    expect(body).toEqual({
+      requirement: 'r',
+      taskId: 'dsh-call-voice-contract',
+      language: 'zh-CN',
+      teacherVoice: { providerId: 'qwen-vc', voiceId: 'teacher-voice', modelId: 'voice-model' },
+      roleVoiceOverrides: {
+        assistant: { providerId: 'qwen-vc', voiceId: 'assistant-voice' },
+      },
+      enableWebSearch: true,
+    })
+  })
+
+  it('derives the same server taskId when the same Harness call is retried', async () => {
+    const captured = stubGenerate()
+    const ctx = await setup()
+    const stableCallId = CallId('call-retry-stable')
+
+    await callTool(ctx, { requirement: 'r' }, stableCallId)
+    await callTool(ctx, { requirement: 'r' }, stableCallId)
+
+    expect(captured.bodies).toHaveLength(2)
+    expect(captured.bodies.map(body => (body as Record<string, unknown>).taskId)).toEqual([
+      'dsh-call-retry-stable',
+      'dsh-call-retry-stable',
+    ])
   })
 
   it('polls the returned pollUrl', async () => {

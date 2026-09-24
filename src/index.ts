@@ -15,7 +15,7 @@ import type SkillService from '@deepseek-ai/dsh-skill'
 import type ToolRegistry from '@deepseek-ai/dsh-tools'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import z from '@deepseek-ai/schemastery'
-import { generateClassroom } from './client.js'
+import { generateClassroom, type ClassroomRole, type VoiceBinding } from './client.js'
 import { openmaicRenderTool } from './tool.js'
 import { openmaicSkillProvider } from './skill.js'
 import { openmaicWidgetTool } from './widget.js'
@@ -39,6 +39,28 @@ export interface Config {
 
 const DEFAULT_BASE_URL = 'https://open.maic.chat'
 
+export function taskIdForHarnessCall(callId: unknown): string {
+  const value = String(callId).trim()
+  const taskId = `dsh-${value}`
+  if (value === '' || taskId.length > 128 || /[\u0000-\u001f\u007f]/u.test(taskId)) {
+    throw new Error('openmaic_generate: invalid DeepSeek Harness callId for task binding')
+  }
+  return taskId
+}
+
+function voiceBindingParameter(description: string) {
+  return {
+    type: 'object' as const,
+    additionalProperties: false,
+    description,
+    properties: {
+      providerId: { type: 'string' as const, required: true, description: 'OpenMAIC TTS provider id.' },
+      voiceId: { type: 'string' as const, required: true, description: 'Saved OpenMAIC voice/profile id.' },
+      modelId: { type: 'string' as const, description: 'Optional model id when the saved voice is model-bound.' },
+    },
+  }
+}
+
 export const Config: z<Config> = z.object({
   baseUrl: z.string().default(DEFAULT_BASE_URL)
     .description('OpenMAIC API base URL. Point it at http://localhost:3000 to develop against a local OpenMAIC instance.'),
@@ -51,7 +73,7 @@ export const Config: z<Config> = z.object({
 })
 
 const GENERATE_PROMPT_TEXT = `## Generate OpenMAIC classroom (openmaic_generate)
-Use openmaic_generate when the user asks you to create or prepare a lesson, course, or classroom (for example "帮我做一节 XX 课" or "make a lesson about X"). Put the teaching requirement in \`requirement\`. The tool submits an async job to open.maic.chat, waits for it, and returns a playable classroom URL. Only pass the optional flags (language, enableWebSearch, enableImageGeneration, enableVideoGeneration, enableTTS, agentMode) when the user actually asked for them. On success, show the returned Classroom URL to the user as a bare link they can open.`
+Use openmaic_generate when the user asks you to create or prepare a lesson, course, or classroom (for example "帮我做一节 XX 课" or "make a lesson about X"). Put the teaching requirement in \`requirement\`. The tool submits an async job to open.maic.chat, waits for it, and returns a playable classroom URL. Only pass the optional flags (language, teacherVoice, roleVoiceOverrides, enableWebSearch, enableImageGeneration, enableVideoGeneration, enableTTS, agentMode) when the user actually asked for them. Never invent providerId, voiceId, or modelId; pass voice bindings only when they came from the user or trusted tool/context data. On success, show the returned Classroom URL to the user as a bare link they can open.`
 
 const RENDER_PROMPT_TEXT = `## Render OpenMAIC teaching card (openmaic_render)
 Use openmaic_render when a visual helps more than text: explaining a concept, giving a quiz, walking through an algorithm or a multi-step process, or showing a slide. Write the card as an inline HTML fragment (markup + style + optional script, no <!doctype>/<html>/<head>/<body>) and pass it in \`fragment\` with a short \`title\`. Load the openmaic-render skill for the fragment contract before the first call.`
@@ -89,6 +111,17 @@ export function apply(ctx: Context, config: Config): void {
         enum: ['zh-CN', 'en-US'],
         description: 'Language of the generated classroom. zh-CN (Chinese) or en-US (English).',
       },
+      teacherVoice: voiceBindingParameter('Optional fixed teacher/narrator voice. Only use a real saved OpenMAIC voice binding; never invent ids.'),
+      roleVoiceOverrides: {
+        type: 'object',
+        additionalProperties: false,
+        description: 'Optional fixed voices by classroom role. Only pass roles with real saved OpenMAIC voice bindings.',
+        properties: {
+          teacher: voiceBindingParameter('Fixed voice for all teacher-role agents.'),
+          assistant: voiceBindingParameter('Fixed voice for all assistant-role agents.'),
+          student: voiceBindingParameter('Fixed voice for all student-role agents.'),
+        },
+      },
       enableWebSearch: {
         type: 'boolean',
         description: 'Let the generation pipeline search the web for up-to-date material.',
@@ -114,10 +147,12 @@ export function apply(ctx: Context, config: Config): void {
     output: TEXT_OUTPUT,
     timeoutMs: resolved.maxWaitMs,
     isConcurrencySafe: () => true,
-    execute: async (args) => {
+    execute: async (args, execution) => {
       const input = args as {
         requirement?: unknown
         language?: unknown
+        teacherVoice?: unknown
+        roleVoiceOverrides?: unknown
         enableWebSearch?: unknown
         enableImageGeneration?: unknown
         enableVideoGeneration?: unknown
@@ -132,7 +167,10 @@ export function apply(ctx: Context, config: Config): void {
         pollIntervalMs: resolved.pollIntervalMs,
         maxWaitMs: resolved.maxWaitMs,
         requirement,
+        taskId: taskIdForHarnessCall(execution.callId),
         language: typeof input.language === 'string' ? input.language : undefined,
+        teacherVoice: input.teacherVoice as VoiceBinding | undefined,
+        roleVoiceOverrides: input.roleVoiceOverrides as Partial<Record<ClassroomRole, VoiceBinding>> | undefined,
         enableWebSearch: typeof input.enableWebSearch === 'boolean' ? input.enableWebSearch : undefined,
         enableImageGeneration: typeof input.enableImageGeneration === 'boolean' ? input.enableImageGeneration : undefined,
         enableVideoGeneration: typeof input.enableVideoGeneration === 'boolean' ? input.enableVideoGeneration : undefined,
@@ -140,7 +178,7 @@ export function apply(ctx: Context, config: Config): void {
         agentMode: typeof input.agentMode === 'string' ? input.agentMode : undefined,
       })
       if (outcome.status === 'succeeded') {
-        return `Classroom ID: ${outcome.classroomId}\nClassroom URL:\n${outcome.url}`
+        return `Course ID: ${outcome.courseId}\nClassroom ID: ${outcome.classroomId}\nClassroom URL:\n${outcome.url}`
       }
       throw new Error(outcome.error)
     },

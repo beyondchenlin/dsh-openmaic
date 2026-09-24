@@ -7,13 +7,24 @@
  * @module dsh-openmaic/client
  */
 
+export interface VoiceBinding {
+  providerId: string
+  modelId?: string
+  voiceId: string
+}
+
+export type ClassroomRole = 'teacher' | 'assistant' | 'student'
+
 export interface GenerateClassroomOptions {
   baseUrl: string
   accessCode: string
   pollIntervalMs: number
   maxWaitMs: number
   requirement: string
+  taskId?: string
   language?: string
+  teacherVoice?: VoiceBinding
+  roleVoiceOverrides?: Partial<Record<ClassroomRole, VoiceBinding>>
   enableWebSearch?: boolean
   enableImageGeneration?: boolean
   enableVideoGeneration?: boolean
@@ -23,7 +34,7 @@ export interface GenerateClassroomOptions {
 }
 
 export type GenerateOutcome =
-  | { status: 'succeeded'; classroomId: string; url: string }
+  | { status: 'succeeded'; courseId: string; classroomId: string; url: string }
   | { status: 'failed'; jobId: string | undefined; error: string }
   | { status: 'timeout'; jobId: string | undefined; error: string }
 
@@ -32,7 +43,7 @@ interface JobResponse {
   status?: unknown
   message?: unknown
   pollUrl?: unknown
-  result?: { classroomId?: unknown; url?: unknown }
+  result?: { courseId?: unknown; classroomId?: unknown; url?: unknown }
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
@@ -81,7 +92,10 @@ export async function generateClassroom(options: GenerateClassroomOptions): Prom
   // 2. Submit the async generation job. Optional flags are only included when
   //    the caller actually provided them.
   const body: Record<string, unknown> = { requirement: options.requirement }
+  if (options.taskId !== undefined) body.taskId = options.taskId
   if (options.language !== undefined) body.language = options.language
+  if (options.teacherVoice !== undefined) body.teacherVoice = options.teacherVoice
+  if (options.roleVoiceOverrides !== undefined) body.roleVoiceOverrides = options.roleVoiceOverrides
   if (options.enableWebSearch !== undefined) body.enableWebSearch = options.enableWebSearch
   if (options.enableImageGeneration !== undefined) body.enableImageGeneration = options.enableImageGeneration
   if (options.enableVideoGeneration !== undefined) body.enableVideoGeneration = options.enableVideoGeneration
@@ -107,14 +121,21 @@ export async function generateClassroom(options: GenerateClassroomOptions): Prom
     const poll = await readJson(pollRes, 'poll')
     const status = typeof poll.status === 'string' ? poll.status : ''
     if (status === 'succeeded') {
-      const classroomId = typeof poll.result?.classroomId === 'string' ? poll.result.classroomId : ''
-      if (classroomId === '') {
-        throw new Error('openmaic_generate: job succeeded but the result has no classroomId')
+      const courseId = typeof poll.result?.courseId === 'string' && poll.result.courseId !== ''
+        ? poll.result.courseId
+        : typeof poll.result?.classroomId === 'string'
+          ? poll.result.classroomId
+          : ''
+      const classroomId = typeof poll.result?.classroomId === 'string' && poll.result.classroomId !== ''
+        ? poll.result.classroomId
+        : courseId
+      if (courseId === '' || classroomId === '') {
+        throw new Error('openmaic_generate: job succeeded but the result has no courseId/classroomId')
       }
       const url = typeof poll.result?.url === 'string' && poll.result.url !== ''
         ? poll.result.url
         : `${baseUrl}/classroom/${classroomId}`
-      return { status: 'succeeded', classroomId, url }
+      return { status: 'succeeded', courseId, classroomId, url }
     }
     if (status === 'failed') {
       const message = typeof poll.message === 'string' && poll.message !== '' ? poll.message : 'generation failed'

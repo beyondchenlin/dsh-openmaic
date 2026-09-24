@@ -36,11 +36,11 @@ describe('generateClassroom', () => {
       if (u.endsWith('/api/generate-classroom')) {
         return jsonResponse({ jobId: 'job-1', status: 'processing', pollUrl: 'https://open.maic.chat/api/jobs/job-1' }, 202)
       }
-      return jsonResponse({ status: 'succeeded', result: { classroomId: 'class-1', url: 'https://open.maic.chat/classroom/class-1' } })
+      return jsonResponse({ status: 'succeeded', result: { courseId: 'course-1', classroomId: 'class-1', url: 'https://open.maic.chat/classroom/class-1' } })
     }) as typeof fetch
 
     const outcome = await generateClassroom({ ...baseOptions(), fetch: fakeFetch })
-    expect(outcome).toEqual({ status: 'succeeded', classroomId: 'class-1', url: 'https://open.maic.chat/classroom/class-1' })
+    expect(outcome).toEqual({ status: 'succeeded', courseId: 'course-1', classroomId: 'class-1', url: 'https://open.maic.chat/classroom/class-1' })
     expect(calls.map(c => c.url)).toEqual([
       'https://open.maic.chat/api/generate-classroom',
       'https://open.maic.chat/api/jobs/job-1',
@@ -61,7 +61,12 @@ describe('generateClassroom', () => {
 
     await generateClassroom({
       ...baseOptions(),
+      taskId: 'dsh-call-stable',
       language: 'zh-CN',
+      teacherVoice: { providerId: 'qwen-vc', voiceId: 'teacher-voice', modelId: 'voice-model' },
+      roleVoiceOverrides: {
+        assistant: { providerId: 'qwen-vc', voiceId: 'assistant-voice' },
+      },
       enableWebSearch: true,
       enableTTS: false,
       agentMode: 'generate',
@@ -69,7 +74,12 @@ describe('generateClassroom', () => {
     })
     expect(submitBody).toEqual({
       requirement: 'quantum physics for beginners',
+      taskId: 'dsh-call-stable',
       language: 'zh-CN',
+      teacherVoice: { providerId: 'qwen-vc', voiceId: 'teacher-voice', modelId: 'voice-model' },
+      roleVoiceOverrides: {
+        assistant: { providerId: 'qwen-vc', voiceId: 'assistant-voice' },
+      },
       enableWebSearch: true,
       enableTTS: false,
       agentMode: 'generate',
@@ -148,6 +158,6 @@ describe('generateClassroom', () => {
     }) as typeof fetch
 
     const outcome = await generateClassroom({ ...baseOptions(), fetch: fakeFetch })
-    expect(outcome).toEqual({ status: 'succeeded', classroomId: 'class-7', url: 'https://open.maic.chat/classroom/class-7' })
+    expect(outcome).toEqual({ status: 'succeeded', courseId: 'class-7', classroomId: 'class-7', url: 'https://open.maic.chat/classroom/class-7' })
   })
 })
